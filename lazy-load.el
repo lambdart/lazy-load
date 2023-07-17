@@ -1,9 +1,9 @@
-;;; lazy-load.el --- Automatic generate package autoloads -*- lexical-binding: t -*-
+;;; lazy-load.el --- Automatic generate package autoloads -*- lexical-binding: nil -*-
 ;;
 ;; Author: lambdart <lambdart@protonmail.com>
 ;; Maintainer: lambdart
-;; Version: Alpha 0.0.8
-;; Homepage: https://github.com/lambdart/lazy
+;; Version: Beta 1.0
+;; Homepage: https://codeberg.org/lambdart/lazy-load
 ;; Keywords: autoloads load definitions
 ;;
 ;;; MIT License
@@ -34,8 +34,8 @@
 (require 'files)
 (require 'timer)
 (require 'cl-seq)
-(require 'autoload)
 (require 'filenotify)
+(require 'loaddefs-gen)
 
 (defgroup lazy-load nil
   "Autoloads generator."
@@ -44,12 +44,12 @@
 
 (defcustom lazy-load-files-alist
   (list
-   ;; lisp directory
+   ;; local lisp directory
    (cons "lisp-loaddefs.el"
-         (expand-file-name "lisp/" user-emacs-directory))
-   ;; site-lisp directory
+		 (expand-file-name "lisp/" user-emacs-directory))
+   ;; 3party lisp directory
    (cons "site-lisp-loaddefs.el"
-         (expand-file-name "site-lisp/" user-emacs-directory)))
+		 (expand-file-name "site-lisp/" user-emacs-directory)))
 
   "Associative list of (loaddefs-file-name . full-path-directory).
 
@@ -358,7 +358,7 @@ If optional ARG is non-nil, force the activation of debug messages."
   "Show lazy-load minor mode state: on/off."
   (interactive)
   (message "[LAZY-LOAD]: mode %s"
-           (if lazy-load-mode "on" "off")))
+		   (if lazy-load-mode "on" "off")))
 
 (defun lazy-load-mode-setup (funcs)
   "Call setup FUNCS list."
