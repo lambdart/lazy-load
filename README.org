@@ -3,6 +3,7 @@
 #+KEYWORDS: readme, emacs, elisp, autoloads, elisp, package
 #+LANGUAGE: en
 #+PROPERTY: header-args :tangle no
+#+OPTIONS: toc:nil
 
 * Introduction
 
@@ -63,7 +64,7 @@
 
    #+BEGIN_SRC sh
 
-   $ git clone https://github.com/lambdart/lazy-load ~/.emacs.d/site-elisp/lazy-load
+   $ git clone https://codeberg.org/lambdart/lazy-load ~/.emacs.d/site-elisp/lazy-load
 
    #+END_SRC
 
