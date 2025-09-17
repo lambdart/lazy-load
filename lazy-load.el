@@ -27,7 +27,7 @@
 ;; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 ;; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ;; SOFTWARE.
-;;
+
 ;;; Commentary:
 ;;; Code:
 
@@ -46,10 +46,10 @@
   (list
    ;; local lisp directory
    (cons "lisp-loaddefs.el"
-		 (expand-file-name "lisp/" user-emacs-directory))
+         (expand-file-name "lisp/" user-emacs-directory))
    ;; 3party lisp directory
    (cons "site-lisp-loaddefs.el"
-		 (expand-file-name "site-lisp/" user-emacs-directory)))
+         (expand-file-name "site-lisp/" user-emacs-directory)))
 
   "Associative list of (loaddefs-file-name . full-path-directory).
 
@@ -358,7 +358,7 @@ If optional ARG is non-nil, force the activation of debug messages."
   "Show lazy-load minor mode state: on/off."
   (interactive)
   (message "[LAZY-LOAD]: mode %s"
-		   (if lazy-load-mode "on" "off")))
+           (if lazy-load-mode "on" "off")))
 
 (defun lazy-load-mode-setup (funcs)
   "Call setup FUNCS list."
