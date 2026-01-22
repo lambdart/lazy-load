@@ -222,8 +222,7 @@ descriptors."
 Using as a source the custom `lazy-load-file-alist'.
 This directories will be monitored using the filenotify library."
   (setq lazy-load-watched-dirs
-        (seq-remove (lambda (dir)
-                      (eq dir nil))
+        (seq-remove #'null
                     (seq-map (lambda (x)
                                (let ((dir (expand-file-name (cdr x))))
                                  (and (member dir lazy-load-watched-dirs) dir)))
