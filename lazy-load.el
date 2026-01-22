@@ -31,6 +31,7 @@
 ;;; Commentary:
 ;;; Code:
 
+(require 'seq)
 (require 'files)
 (require 'timer)
 (require 'cl-seq)
@@ -158,7 +159,7 @@ See `message' for more information about FMT and ARGS arguments."
   `(when lazy-load-debug-messages-flag
      (message (concat lazy-load-message-prefix ,fmt) ,@args)))
 
-(defun lazy-load--file-notify-callback (event)
+(defun lazy-load--file-notify-fn (event)
   "The `filenotify' related callback, called when a EVENT occur.
 
 If timer was already initialized, restart it
@@ -196,16 +197,16 @@ wait a little time (seconds) and then update the load definitions."
   "Add `lazy-load-watched-dirs' to the notifications system: `filenotofy'.
 Push the returned file descriptor `lazy-load-file-descriptors' list."
   ;; iterate over the directories list
-  (mapc (lambda (dir)
-          ;; add descriptor to the `lazy-load-file-descriptors' list
-          ;; if no errors are raised
-          (let ((temp
-                 (ignore-errors
+  (dolist (dir lazy-load-watched-dirs nil)
+    ((lambda (dir)
+       ;; add descriptor to the `lazy-load-file-descriptors' list
+       ;; if no errors are raised
+       (let ((fd (ignore-errors
                    (file-notify-add-watch dir
                                           '(change attribute-change)
-                                          'lazy-load--file-notify-callback))))
-            (and temp (push temp lazy-load-file-descriptors))))
-        lazy-load-watched-dirs))
+                                          'lazy-load--file-notify-fn))))
+         (and fd (push fd lazy-load-file-descriptors))))
+     dir)))
 
 (defun lazy-load--rm-file-notify-watch ()
   "Remove `filenotify' watch using the saved descriptors.
@@ -214,24 +215,24 @@ descriptors."
   ;; clean file descriptors list
   (setq lazy-load-file-descriptors
         (prog1 nil
-          (mapc #'file-notify-rm-watch
-                lazy-load-file-descriptors))))
+          (seq-do #'file-notify-rm-watch lazy-load-file-descriptors))))
 
 (defun lazy-load--set-dirs-list ()
   "Set internal directories lists `lazy-load-watched-dirs'.
 Using as a source the custom `lazy-load-file-alist'.
 This directories will be monitored using the filenotify library."
-  (mapc (lambda (x)
-          (let ((dir (expand-file-name (cdr x))))
-            (when (not (member dir lazy-load-watched-dirs))
-              (push dir lazy-load-watched-dirs))))
-        lazy-load-files-alist))
+  (setq lazy-load-watched-dirs
+        (seq-remove (lambda (dir)
+                      (eq dir nil))
+                    (seq-map (lambda (x)
+                               (let ((dir (expand-file-name (cdr x))))
+                                 (and (member dir lazy-load-watched-dirs) dir)))
+                             lazy-load-files-alist))))
 
 (defun lazy-load--clean-internal-vars ()
   "Clean internal variables."
-  (mapc (lambda (s)
-          (set s nil))
-        lazy-load-internal-vars))
+  (dolist (var lazy-load-internal-vars nil)
+    (set var nil)))
 
 (defun lazy-load--create-empty-file (file)
   "Create a empty FILE if doesn't exists."
@@ -257,34 +258,31 @@ Uses the outdated `update-directory-autoloads' function."
       (let ((buffer (get-file-buffer output-file)))
         (and buffer (kill-buffer buffer))))))
 
-(defun lazy-load-update-directories-autoloads (dir output-file)
-  "Generate autoloads from DIR and save it in OUTPUT-FILE."
+(defun lazy-load-update-directories-autoloads (directory output-file)
+  "Generate autoloads from DIRECTORY and save it in OUTPUT-FILE."
   (interactive (lazy-load--read-args))
-  (let ((func (if (fboundp 'make-directory-autoloads)
-                  'make-directory-autoloads
-                'lazy-load--update-directory-autoloads))
-        (dirs (cl-remove-if-not #'file-directory-p
-                                (directory-files dir t "^[^.]"))))
+  (let ((function (if (fboundp 'make-directory-autoloads)
+                      'make-directory-autoloads
+                    'lazy-load--update-directory-autoloads))
+        (directories (cl-remove-if-not #'file-directory-p
+                                       (directory-files directory t "^[^.]"))))
     (mapc (lambda (x)
-            (apply 'funcall (car x) (cdr x)))
-          ;; create empty file, update autoloads and maybe kill the generated
-          ;; autoloads file
+            (apply #'funcall (car x) (cdr x)))
+          ;; create empty file, update autoloads and
+          ;; maybe kill the generated the autoloads file
           `((lazy-load--create-empty-file ,output-file)
-            (,func ,dirs ,output-file)
+            (,function ,directories ,output-file)
             (lazy-load--kill-autoload-file-buffer ,output-file)))))
 
 (defun lazy-load-loaddefs ()
   "Reload files defined in `lazy-load-files-alist'."
   (interactive)
-  (mapc (lambda (file)
-          (and (file-exists-p file)
-               (load-file file)))
-        (mapcar (lambda (x)
-                  (expand-file-name (car x)
-                                    (cdr x)))
-                lazy-load-files-alist))
-  ;; debug message
-  (lazy-load--debug-message "Loaddefs reloaded!"))
+  (mapc (lambda (file-name)
+          (and (file-exists-p file-name)
+               (load-file file-name)))
+        (seq-map (lambda (x)
+                   (expand-file-name (car x) (cdr x)))
+                 lazy-load-files-alist)))
 
 ;;;###autoload
 (defun lazy-load-update-autoloads ()
@@ -293,14 +291,16 @@ This function will iterate over the custom associative list
 `lazy-load-files-alist' using its parameters to determinate
 the resulting `loaddefs' file-name and location."
   (interactive)
-  (mapc (lambda (x)
-          (lazy-load-update-directories-autoloads
-           (cdr x) ; target directory
-           (expand-file-name (car x)
-                             (cdr x)))) ; expanded output file
-        lazy-load-files-alist)
-  ;; reload load definitions
-  (lazy-load-loaddefs))
+  (progn
+    (mapc (lambda (x)
+            (lazy-load-update-directories-autoloads
+             (cdr x) ;; target directory
+             ;; expanded output file
+             (expand-file-name (car x)
+                               (cdr x))))
+          lazy-load-files-alist)
+    ;; reload load definitions
+    (lazy-load-loaddefs)))
 
 (defun lazy-load-run-idle-timer ()
   "Run idle timer and cache it."
